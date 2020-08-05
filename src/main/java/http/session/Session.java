@@ -1,5 +1,7 @@
 package http.session;
 
+import server.ApplicationContext;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,11 +30,11 @@ public class Session {
         return attribute.get(var1);
     }
 
-    void setAttribute(String var1, Object var2){
+    public void setAttribute(String var1, Object var2){
         attribute.put(var1, var2);
     }
 
-    void removeAttribute(String var1){
+    public void removeAttribute(String var1){
         attribute.remove(var1);
     }
 
@@ -41,4 +43,9 @@ public class Session {
     }
 
 
+    public void remove() {
+        this.attribute.clear();
+        ApplicationContext.getInstance().removeSession(this);
+
+    }
 }

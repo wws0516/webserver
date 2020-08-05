@@ -6,7 +6,10 @@ import java.util.Set;
 /**
  * @Author: wws
  * @Date: 2020-07-14 12:47
+ * 对应xml中读到的<filter-mapping></filter-mapping>
  */
+
+
 public class FilterEntityMapping {
 
     private String name;

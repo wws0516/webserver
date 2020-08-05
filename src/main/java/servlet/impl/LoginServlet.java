@@ -14,11 +14,11 @@ public class LoginServlet extends HttpServlet {
 
     @Override
     public void service(Request req, Response res) {
+        System.out.println(req.getUrl());
 
-        //            res.println("<html>");
-//            res.println("<title>np</title>");
-//            res.println("</html>");
-//            res.flush();
+        String username = req.getParameter("username");
+        req.getSession(true, res).setAttribute("username", username);
+
         try {
             res.redirect("index.html");
         } catch (IOException e) {

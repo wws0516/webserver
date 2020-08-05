@@ -1,13 +1,11 @@
 package http.request;
 
-import http.CharConstant;
 import http.cookie.Cookie;
 import http.response.Response;
 import http.session.Session;
 import org.apache.commons.io.IOUtils;
 import server.ApplicationContext;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -15,6 +13,7 @@ import java.nio.charset.Charset;
 import java.util.*;
 
 import Exception.*;
+import util.RequestMethod;
 
 /**
  * @Author: wws
@@ -22,6 +21,10 @@ import Exception.*;
  */
 public class Request {
 
+    //回车换行
+    public static final String CRLF = "\r\n";
+
+    private ApplicationContext applicationContext = ApplicationContext.getInstance();
     //请求的所有信息
     private String requestInfo;
 
@@ -52,8 +55,8 @@ public class Request {
         this.requestInfo = requestInfo;
     }
 
-    public String getMethod() {
-        return method;
+    public RequestMethod getMethod() {
+        return RequestMethod.valueOf(method.toUpperCase());
     }
 
     public void setMethod(String method) {
@@ -68,8 +71,8 @@ public class Request {
         this.url = url;
     }
 
-    public Map<String, String> getParameter() {
-        return parameter;
+    public String getParameter(String s) {
+        return parameter.get(s);
     }
 
     public void setParameter(Map<String, String> parameter) {
@@ -106,19 +109,19 @@ public class Request {
 
 
         try {
-            requestInfo = URLDecoder.decode(new String(requestInfo.getBytes(), Charset.defaultCharset()), "UTF-8");
+            requestInfo = URLDecoder.decode(requestInfo, "UTF-8");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        System.out.println(requestInfo);
-        String[] lines = requestInfo.split(CharConstant.CRLF);
+//        System.out.println(requestInfo);
+        String[] lines = requestInfo.split(CRLF);
 
         try {
 
             if (lines.length <= 1)
                 throw new InvalidRequestException("请求格式错误");
         }catch (InvalidRequestException e) {
-            System.out.println(e.getErrMsg());
+            e.printStackTrace();
         }
         for (int i=1; i<lines.length; i++) {
             if (lines[i].equals(""))
@@ -127,13 +130,15 @@ public class Request {
             headers.put(kv[0], kv[1]);
         }
         if (headers.containsKey("Cookie")) {
-            String[] cookies = headers.get("Cookie").split(";");
-            for (String cookie : cookies)
+            String[] cookies = headers.get("Cookie").split("; ");
+            for (String cookie : cookies) {
+//                System.out.println(cookie);
                 this.cookies.add(new Cookie(cookie.split("=")[0], cookie.split("=")[1]));
+            }
         }
 
         if (headers.containsKey("Content-Length") && Integer.valueOf(headers.get("Content-Length")) != 0)
-            parseBody(requestInfo.split(CharConstant.CRLF + CharConstant.CRLF)[1]);
+            parseBody(requestInfo.split(CRLF + CRLF)[1]);
     }
 
     /*
@@ -160,35 +165,42 @@ public class Request {
         }
         for (Cookie cookie : cookies) {
             if (cookie.getName().equals("JSESSIONID")) {
-                Session currentSession = ApplicationContext.getSession(cookie.getValue());
+                //全局中不一定存在request带来的cookie,可能已经过期被清除了
+                Session currentSession = applicationContext.getSession(cookie.getValue());
+                System.out.println(currentSession);
                 if (currentSession != null) {
                     session = currentSession;
                     return session;
                 }
             }
         }
+        //若找不到，是否创建新的session
         if (!create) {
             return null;
         }
-        session = ApplicationContext.createSession(response);
+        session = applicationContext.createSession(response);
         return session;
     }
 
 
     public void forward(String url, Response response) {
 
-        InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(url);
+
+        InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(url.substring(1));
 
         try {
             if (is == null) {
                 throw new ResourceNotFoundException("转发的页面文件找不到");
             }
             response.setContent(IOUtils.toString(is));
-            System.out.println(IOUtils.toString(is));
             response.flush();
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+    }
+
+    public Map<String, String> getHeaders() {
+        return headers;
     }
 }

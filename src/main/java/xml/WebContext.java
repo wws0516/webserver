@@ -2,6 +2,7 @@ package xml;
 
 import filter.Filter;
 import servlet.Servlet;
+import servlet.impl.DefaultServlet;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -16,6 +17,8 @@ import java.util.Map;
  */
 public class WebContext {
 
+    private WebContext webContext;
+
     private Map<String, String> entitiesMap = new HashMap<String, String>();        //存储servlet-name和servlet-class
     private Map<String, String> entityMappingsMap = new HashMap<String, String>();  //存储url-pattern和servlet-name
 
@@ -25,9 +28,15 @@ public class WebContext {
     private Map<String, String> url_servlet_map = new HashMap<String, String>();    //存储url及其对应的servlet
     private Map<String, List<String>> url_filter_map = new HashMap<>();     //存储url及其对应的filters
 
+    List<Listen> listens = new ArrayList<>();
 
-    public WebContext(List<Entity> entities, List<EntityMapping> entityMappings, List<FilterEntity> filters, List<FilterEntityMapping> filterEntityMappings) {
+    private final String defaultServletClz = "servlet.impl.DefaultServlet";
 
+    public List<Listen> getListens() {
+        return listens;
+    }
+
+    public WebContext(List<Entity> entities, List<EntityMapping> entityMappings, List<FilterEntity> filters, List<FilterEntityMapping> filterEntityMappings, List<Listen> listens) {
 
         for (Entity entity : entities)
             entitiesMap.put(entity.getName(), entity.getClazz());
@@ -62,9 +71,12 @@ public class WebContext {
                 url_filter_map.computeIfAbsent(urlPattern, k -> new ArrayList<String>());
                 url_filter_map.get(urlPattern).add(filtersMap.get(filterName));
             }
+
+        this.listens = listens;
     }
 
 
+    //通过url获取过滤器链
     public List<Filter> getFilterByUrl(String url) {
         List<Filter> filters = new ArrayList<>();
         if (url_filter_map.get(url) == null)
@@ -80,10 +92,13 @@ public class WebContext {
 
     }
 
+    //通过url获取对应的servlet
     public Servlet getServletByUrl(String url) {
         Servlet servlet = null;
         try {
-            servlet = (Servlet)Class.forName(url_servlet_map.get(url)).getConstructor().newInstance();
+            String servletClz = url_servlet_map.getOrDefault(url, defaultServletClz);
+
+            servlet = (Servlet)Class.forName(servletClz).getConstructor().newInstance();
         } catch (Exception e) {
             e.printStackTrace();
         }

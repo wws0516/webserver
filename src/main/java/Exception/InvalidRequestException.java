@@ -12,7 +12,9 @@ public class InvalidRequestException extends Exception{
         super(errMsg);
     }
 
-    public String getErrMsg() {
-        return errMsg;
+
+    @Override
+    public void printStackTrace(){
+        System.out.println(errMsg);
     }
 }

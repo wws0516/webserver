@@ -1,4 +1,4 @@
-package filter;
+package filter.filterchain;
 
 import http.request.Request;
 import http.response.Response;

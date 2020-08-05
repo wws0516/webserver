@@ -1,9 +1,8 @@
 package filter;
 
+import filter.filterchain.FilterChain;
 import http.request.Request;
 import http.response.Response;
-
-import java.io.IOException;
 
 /**
  * @Author: wws

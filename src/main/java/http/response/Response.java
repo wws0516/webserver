@@ -17,7 +17,7 @@ import Exception.*;
 public class Response {
 
 	//用于将response刷回客户端
-	private RequestHandler requestHandler = new RequestHandler();
+	private RequestHandler requestHandler;
 
 	private StringBuilder sb = new StringBuilder();
 
@@ -38,12 +38,6 @@ public class Response {
 	public Response() {
 
 	}
-
-//	public Response(int code) {
-//
-//		createHeadInfo();
-//
-//	}
 
 	//动态添加内容
 	public Response print(String info) {
@@ -68,16 +62,16 @@ public class Response {
 	public ByteBuffer pushToBrowser() {
 
 		sb.append(headInfo);
-		sb.append(CRLF);
+//		sb.append(CRLF);
 		sb.append(content);
 		return ByteBuffer.wrap(sb.toString().getBytes());
 	}
 
 	//刷新响应信息
-	public ByteBuffer flush() throws IOException {
+	public void flush() throws IOException {
 
 		createHeadInfo();
-		return pushToBrowser();
+		requestHandler.flushRes(this);
 	}
 
 	//构建头信息
@@ -109,7 +103,7 @@ public class Response {
 		//将set-cookie添加进响应头
 		if (cookies.size() > 0)
 			for (Cookie cookie : cookies)
-				headInfo.append("Set-Cookie: "+cookie.getName()+"="+cookie.getValue());
+				headInfo.append("Set-Cookie: "+cookie.getName()+"="+cookie.getValue()).append(CRLF);
 
 		headInfo.append("Content-type: text/html").append(CRLF);
 		headInfo.append("Content-length: ").append(len).append(CRLF);
@@ -142,7 +136,7 @@ public class Response {
 
 		createHeadInfo();
 //		sb = headInfo.append(content);
-//		requestHandler.flushRes(this);
+		requestHandler.flushRes(this);
 	}
 
 	public void addHeader(ResponseHeader rh) throws IOException {
@@ -157,4 +151,7 @@ public class Response {
 		this.code = code;
 	}
 
+	public void setRequestHandler(RequestHandler requestHandler) {
+		this.requestHandler = requestHandler;
+	}
 }

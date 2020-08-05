@@ -12,6 +12,8 @@ public class ServerWrapper {
 
     public SocketChannel sChannel;
 
+    public boolean keepALive = false;
+
     public void process(SocketChannel sChannel, Response response){
 
     }

@@ -1,7 +1,7 @@
 package http;
 
 import filter.Filter;
-import filter.FilterChain;
+import filter.filterchain.FilterChain;
 import http.request.Request;
 import http.response.Response;
 import server.ApplicationContext;
@@ -11,6 +11,7 @@ import xml.WebContext;
 import xml.XMLParse;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.List;
@@ -21,9 +22,17 @@ import java.util.Map;
  * @author: wws
  * @Date: 2020-07-16 06:58
  */
-public class RequestHandler implements FilterChain{
+public class RequestHandler implements FilterChain, Runnable{
 
     private ServerWrapper serverWrapper;
+
+    private Request request;
+    private Response response;
+
+    //标识是否在过滤器链中就已经完成 请求
+    boolean isFinished = false;
+
+    private ApplicationContext applicationContext = ApplicationContext.getInstance();
 
     Map<String, List<Filter>> filtersMap = new HashMap<>();
 
@@ -31,28 +40,33 @@ public class RequestHandler implements FilterChain{
 
     int filterIndex = 0;
 
-    //解析xml，获取过滤器，存到Map<String, List<Filter>>中
+    public RequestHandler(ServerWrapper serverWrapper, Request request, Response response) {
+        this.serverWrapper = serverWrapper;
+        this.request = request;
+        this.response = response;
+        response.setRequestHandler(this);
+    }
+
     //解析request,获取request的url,到map中取对应的过滤器集合
     //如果没有过滤器，直接执行servlet；若有，执行过滤器链
-    public void handler(Request request, Response response) {
+    public void handler() {
 
-        XMLParse xmlParse = XMLParse.getInstance();
-        WebContext webContext = null;
-        try {
-            webContext = xmlParse.startParse();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        matchedFilters = webContext.getFilterByUrl(request.getUrl());
+        System.out.println(applicationContext);
+        matchedFilters = applicationContext.getFilterByUrl(request.getUrl());
 
         if (matchedFilters.size()>0)
             doFilter(request, response);
+        else service();
 
+    }
+
+    //执行servlet的service方法
+    private void service() {
         Servlet servlet = null;
 
         try {
-            servlet = webContext.getServletByUrl(request.getUrl());
+            //获取url对应的servlet，默认为defaultServlet
+            servlet = applicationContext.getServletByUrl(request.getUrl());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -64,14 +78,14 @@ public class RequestHandler implements FilterChain{
         else
             response.setCode(HttpStatusCode.NOT_FOUND);
 
+//        flushRes(response);
     }
 
 
-//    public void run() {
-//        serverWrapper.run();
-//    }
-
     public void flushRes(Response response){
+        //请求处理完毕
+        isFinished = true;
+
         SocketChannel socketChannel = serverWrapper.getsChannel();
         try {
             socketChannel.write(response.pushToBrowser());
@@ -95,6 +109,12 @@ public class RequestHandler implements FilterChain{
 
         if (filterIndex < matchedFilters.size())
             matchedFilters.get(filterIndex++).doFilter(request, response, this);
+        else if (!isFinished)
+            service();
+    }
 
+    @Override
+    public void run() {
+        handler();
     }
 }

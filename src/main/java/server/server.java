@@ -1,6 +1,7 @@
 package server;
 
 import http.HttpStatusCode;
+import http.RequestDispatcher;
 import http.RequestHandler;
 import http.request.Request;
 import http.response.Response;
@@ -16,6 +17,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * @Author: wws
@@ -23,12 +25,10 @@ import java.util.Iterator;
  */
 public class server extends ServerWrapper{
 
-    private RequestHandler requestHandler = new RequestHandler();
+    private ThreadPoolExecutor threadPoolExecutor;
 
-//    @Test
-//    public void test(){
-//        InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream("web.xml");
-//    }
+    private static RequestDispatcher requestDispatcher = new RequestDispatcher();
+//    private RequestHandler requestHandler = new RequestHandler();
 
     @Test
     public void run() throws IOException {
@@ -39,42 +39,33 @@ public class server extends ServerWrapper{
         Selector selector = Selector.open();
         ssChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-        while (selector.select() > 0){
+        while (selector.select() > 0) {
             Iterator<SelectionKey> it = selector.selectedKeys().iterator();
-            while (it.hasNext()){
+            while (it.hasNext()) {
                 SelectionKey sk = it.next();
-                if (sk.isAcceptable()){
+
+                if (sk.isAcceptable()) {
                     SocketChannel sChannel = ssChannel.accept();
-                    System.out.println("dsaf");
                     sChannel.configureBlocking(false);
                     sChannel.register(selector, SelectionKey.OP_READ);
 
-                }else if (sk.isReadable()){
+                } else if (sk.isReadable()) {
                     sChannel = (SocketChannel) sk.channel();
-                    ByteBuffer buf = ByteBuffer.allocate(1024);
-                    int len;
-                    while ((len = sChannel.read(buf)) > 0){
 
-                        buf.flip();
-                        Request req = new Request(new String(buf.array(), 0, len));
-                        req.parseRequest();
-
-                        Response response = new Response();
-                        requestHandler.handler(req, response);
-
-                        requestHandler.setServerWrapper(this);
-                        requestHandler.flushRes(response);
-
-                        buf.clear();
+                    try {
+                        requestDispatcher.doDispatch(this);
+                    }catch (IOException e) {
+                        e.printStackTrace();
                     }
-
 
                 }
                 it.remove();
             }
         }
-
     }
+
+
+
 
     public void start(){
 

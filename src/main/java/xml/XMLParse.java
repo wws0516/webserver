@@ -47,15 +47,12 @@ public class XMLParse {
         InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream("web.xml");
         parser.parse(is, webHandler);
 
-//        return instance;
-//        List<Entity> entityList = webHandler.getEntities();
-//        List<EntityMapping> entityMappingList = webHandler.getEntityMappings();
-//
-        WebContext webContext = new WebContext(entities, entityMappings, filters, filterMappsings);
+        WebContext webContext = new WebContext(entities, entityMappings, filters, filterMappsings, listens);
         return webContext;
 
     }
 
+    //懒汉式单例
     public static XMLParse getInstance() {
         if (instance == null)
             instance = new XMLParse();
@@ -85,7 +82,6 @@ public class XMLParse {
         public void startDocument() throws SAXException {
             entities = new ArrayList<Entity>();
             entityMappings = new ArrayList<EntityMapping>();
-            System.out.println("文档解析开始");
         }
 
         @Override
@@ -104,11 +100,9 @@ public class XMLParse {
             } else if (tag.equals("servlet-mapping")) {
                 entityMapping = new EntityMapping(new HashSet<String>());
                 status = 3;
-            } else if (tag.equals("listen")) {
-                listen = new Listen();
+            } else if (tag.equals("listener")) {
                 status = 4;
             }
-            System.out.println(qName + "元素开始解析");
         }
 
         @Override
@@ -141,10 +135,11 @@ public class XMLParse {
                     entityMapping.getUrlPatterns().add(new String(ch, start, length));
 
             if (status == 4)
-                if (tag.equals("listen-class"))
+                if (tag.equals("listener-class")) {
+                    listen = new Listen();
                     listen.setClz(new String(ch, start, length));
+                }
 
-            System.out.println("元素内容为" + new String(ch, start, length));
         }
 
         @Override
@@ -157,17 +152,15 @@ public class XMLParse {
                 entities.add(entity);
             } else if (qName.equals("servlet-mapping")) {
                 entityMappings.add(entityMapping);
-            } else if (qName.equals("listen")) {
+            } else if (qName.equals("listener")) {
                 listens.add(listen);
             }
 
             tag = "";
-            System.out.println(qName + "元素解析结束");
         }
 
         @Override
         public void endDocument() throws SAXException {
-            System.out.println("文档解析结束");
         }
 
 
